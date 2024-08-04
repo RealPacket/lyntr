@@ -12,7 +12,7 @@
 import { verifyAuthJWT } from "@/server/jwt";
 import { json } from "@sveltejs/kit";
 import { db } from '@/server/db';
-import { users, messages, followers, lynts, likes } from '@/server/schema';
+import { users, followers } from '@/server/schema';
 import { eq } from "drizzle-orm";
 import pendingPublicKeys, { type KeyExchangeRequest } from "./keys";
 
@@ -67,7 +67,9 @@ export async function GET({ request: _, cookies, url }) {
 		} else {
 			ratelimits.delete(user_id);
 		}
-    } catch {}
+    } catch {
+		return json({ error: 'Rate limit check failed'}, { status: 500 })
+	}
     if (!senderId) {
         return json({error: "Missing sender"}, { status: 400 });
     }
