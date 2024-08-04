@@ -50,6 +50,12 @@
 			parentUserCreatedAt: number | null;
 		};
 	};
+	export type EncryptionData = {
+		[profileId: string]: {
+			publicKey: string,
+			privateKey: string
+		}
+	};
 </script>
 
 <script lang="ts">
@@ -76,6 +82,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Search from './Search.svelte';
 	import Lynt from './Lynt.svelte';
+	import { enc, dec, deriveKey, generateKeyPair } from '$lib/enc/index';
 
 	export let profileHandle: string;
 	export let handleLyntClick: (id: string) => void;
@@ -160,6 +167,27 @@
 	let referencedLynt: ReturnType<typeof getLynt> | null = null;
 	let fileinput: HTMLInputElement;
 	let buttonDisabled = false;
+	let encryptionData = null;
+
+	async function initEncryptionData() {
+		if (!localStorage.getItem('messagesEncryptionData')) {
+			// the private keys for each DM should be unique.
+			const keyPair = await generateKeyPair();
+			const data = {
+					[profile.id]: {
+						publicKey: keyPair.publicKeyJwk,
+						privateKey: keyPair.privateKeyJwk
+					}
+				} as EncryptionData;
+			localStorage.setItem(
+				'messagesEncryptionData',
+				JSON.stringify(data)
+			);
+			encryptionData = data;
+		}
+	}
+
+	initEncryptionData();
 
 	$: if (referencedLyntId === null) {
 		referencedLynt = null;
@@ -233,6 +261,7 @@
 			console.error('Error fetching profile:', error);
 			toast('Failed to load profile: ' + error);
 		}
+		await exchangeKeys();
 	}
 
 	async function appendFriends() {
@@ -290,6 +319,7 @@
 			const data = JSON.parse(event.data);
 			if (data.type === 'message') {
 				const msg = data.data;
+				// await dec(msg);
 				messages = [...messages, msg];
 
 				await tick();
@@ -327,6 +357,7 @@
 			formData.append('lynt', referencedLyntId);
 		}
 		formData.append('other_id', profile.id);
+		// await enc(messageValue);
 		formData.append('content', messageValue);
 
 		try {
@@ -355,6 +386,21 @@
 		await tick();
 		if (messagesContainer) {
 			messagesContainer.scrollToBottom();
+		}
+	}
+
+	async function exchangeKeys() {
+		const { publicKeyJwk } = await generateKeyPair();
+		try {
+			await fetch('/api/messages/keyExchange', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ publicKeyJwk, recipientId: profile.id })
+			});
+		} catch (e) {
+			toast.error(`Failed to exchange keys: ${e}`);
 		}
 	}
 
@@ -427,7 +473,7 @@
 					}}
 				>
 					<button
-						class="flex w-full flex-row items-center justify-center gap-2 rounded-full bg-secondary p-1.5 mb-1 {profile &&
+						class="mb-1 flex w-full flex-row items-center justify-center gap-2 rounded-full bg-secondary p-1.5 {profile &&
 						profile.id === friend.id
 							? 'bg-secondary/50'
 							: ''}"
