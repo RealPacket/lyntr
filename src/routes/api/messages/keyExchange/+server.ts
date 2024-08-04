@@ -15,6 +15,7 @@ import { db } from '@/server/db';
 import { users, followers } from '@/server/schema';
 import { eq } from "drizzle-orm";
 import pendingPublicKeys, { type KeyExchangeRequest } from "./keys";
+import { sendMessage } from "@/sse";
 
 const ratelimits = new Map();
 
@@ -24,6 +25,7 @@ export async function POST({ request }) {
 
     const { publicKeyJwk, recipientId } = data as KeyExchangeRequest;
     pendingPublicKeys.set(recipientId, { publicKeyJwk, recipientId });
+	sendMessage(JSON.stringify({type: "keyExchangeRequest", publicKey: publicKeyJwk}), recipientId);
     return json({}, { status: 200 });
 }
 
