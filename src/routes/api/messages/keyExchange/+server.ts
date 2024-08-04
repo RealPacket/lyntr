@@ -33,11 +33,11 @@ const ratelimits = new Map();
 
 export async function POST({ request }) {
     // The JSON contains 2 things: the public key, and the recipient of that public key.
-    const json = await request.json();
+    const data = await request.json();
 
-    const { publicKeyJwk, recipientId } = json as KeyExchangeRequest;
+    const { publicKeyJwk, recipientId } = data as KeyExchangeRequest;
     pendingPublicKeys.set(recipientId, { publicKeyJwk, recipientId });
-    return new Response(json({}), { status: 200 });
+    return json({}, { status: 200 });
 }
 
 export async function GET({ request: _, cookies, url }) {
