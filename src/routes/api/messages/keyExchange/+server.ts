@@ -14,6 +14,7 @@ import { json } from "@sveltejs/kit";
 import { db } from '@/server/db';
 import { users, followers } from '@/server/schema';
 import { eq } from "drizzle-orm";
+import { sendMessage } from "@/sse";
 
 interface KeyExchangeRequest {
     publicKeyJwk: string; // example: thisisbase64encoded==
@@ -28,7 +29,7 @@ and then the sender will GET the recipient's public key from the server.
 while the key hasn't been sent to the server yet, the request will yield.
 */
 
-const pendingPublicKeys: Map</*sender: */string, /*data: */KeyExchangeRequest> = new Map();import { sendMessage } from "@/sse";
+const pendingPublicKeys: Map</*sender: */string, /*data: */KeyExchangeRequest> = new Map();
 
 const ratelimits = new Map();
 
