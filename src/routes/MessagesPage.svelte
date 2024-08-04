@@ -52,9 +52,9 @@
 	};
 	export type EncryptionData = {
 		[profileId: string]: {
-			publicKey: string,
-			privateKey: string
-		}
+			publicKey: JsonWebKey;
+			privateKey: JsonWebKey;
+		};
 	};
 </script>
 
@@ -167,27 +167,24 @@
 	let referencedLynt: ReturnType<typeof getLynt> | null = null;
 	let fileinput: HTMLInputElement;
 	let buttonDisabled = false;
-	let encryptionData = null;
 
-	async function initEncryptionData() {
-		if (!localStorage.getItem('messagesEncryptionData')) {
-			// the private keys for each DM should be unique.
-			const keyPair = await generateKeyPair();
-			const data = {
-					[profile.id]: {
-						publicKey: keyPair.publicKeyJwk,
-						privateKey: keyPair.privateKeyJwk
-					}
-				} as EncryptionData;
-			localStorage.setItem(
-				'messagesEncryptionData',
-				JSON.stringify(data)
-			);
-			encryptionData = data;
-		}
+	async function initDMEncryptionData() {
+		// the private keys for each DM should be unique.
+		const keyPair = await generateKeyPair();
+		const data = {
+				[profile.id]: {
+					publicKey: keyPair.publicKeyJwk,
+					privateKey: keyPair.privateKeyJwk
+				}
+			} as EncryptionData;
+		localStorage.setItem(
+			'messagesEncryptionData',
+			JSON.stringify(data)
+		);
 	}
 
-	initEncryptionData();
+	if (!localStorage.getItem('messagesEncryptionData'))
+			localStorage.setItem('messagesEncryptionData', JSON.stringify({}));
 
 	$: if (referencedLyntId === null) {
 		referencedLynt = null;
@@ -357,6 +354,7 @@
 			formData.append('lynt', referencedLyntId);
 		}
 		formData.append('other_id', profile.id);
+		const encryptionData = getEncryptionData()!;
 		// await enc(messageValue);
 		formData.append('content', messageValue);
 
@@ -389,8 +387,14 @@
 		}
 	}
 
+	function getEncryptionData(): EncryptionData | null {
+		return JSON.parse(localStorage.getItem('messagesEncryptionData')!) as EncryptionData || null;
+	}
+
 	async function exchangeKeys() {
-		const { publicKeyJwk } = await generateKeyPair();
+		await initDMEncryptionData();
+		const publicKeyJwk = getEncryptionData()![profile.id].publicKey;
+		console.log("pkj", publicKeyJwk);
 		try {
 			await fetch('/api/messages/keyExchange', {
 				method: 'POST',
