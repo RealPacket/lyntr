@@ -14,8 +14,21 @@ import { json } from "@sveltejs/kit";
 import { db } from '@/server/db';
 import { users, followers } from '@/server/schema';
 import { eq } from "drizzle-orm";
-import pendingPublicKeys, { type KeyExchangeRequest } from "./keys";
-import { sendMessage } from "@/sse";
+
+interface KeyExchangeRequest {
+    publicKeyJwk: string; // example: thisisbase64encoded==
+    recipientId: string; //  example: 123456 (user ID, @exampleuser)
+}
+
+/*
+the sender will POST their public key to the server and the server will relay that to the recipient,
+the recipient will GET the sender's public key from the server,
+then the recipient will POST their public key to the server and the server will relay that to the sender,
+and then the sender will GET the recipient's public key from the server.
+while the key hasn't been sent to the server yet, the request will yield.
+*/
+
+const pendingPublicKeys: Map</*sender: */string, /*data: */KeyExchangeRequest> = new Map();import { sendMessage } from "@/sse";
 
 const ratelimits = new Map();
 
