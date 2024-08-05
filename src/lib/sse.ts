@@ -45,3 +45,7 @@ export function sendMessage(message: string, userId: string | null = null) {
     });
   }
 }
+
+export function getConnections() {
+  return connections;
+}
